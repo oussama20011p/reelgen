@@ -9,8 +9,8 @@ class CodeRequest(BaseModel):
 
 @router.post("/verify-code")
 def verify_code(req: CodeRequest):
-    valid_codes = os.getenv("INVITE_CODES", "").split(",")
-    valid_codes = [c.strip() for c in valid_codes if c.strip()]
+    env_codes = os.getenv("INVITE_CODES", "oussama2025,sadaka,reelgen")
+    valid_codes = [c.strip() for c in env_codes.split(",") if c.strip()]
     if req.code not in valid_codes:
         raise HTTPException(status_code=401, detail="Code invalide")
     return {"valid": True}
