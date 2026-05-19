@@ -1,0 +1,16 @@
+# Backend
+backend/.env
+backend/__pycache__/
+backend/temp/
+backend/services/__pycache__/
+backend/routers/__pycache__/
+
+# Frontend
+frontend/.env.local
+frontend/.next/
+frontend/node_modules/
+
+# Temp files
+/tmp/reelgen/
+*.wav
+*.mp4

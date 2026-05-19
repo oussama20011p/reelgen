@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: reelgen-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GOOGLE_AI_API_KEY
+        sync: false
+      - key: INVITE_CODES
+        sync: false
+      - key: FFMPEG_PATH
+        value: ffmpeg
+
+  - type: web
+    name: reelgen-frontend
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: reelgen-backend
+          type: web
+          property: host
+          format: https://{host}
