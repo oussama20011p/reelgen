@@ -104,8 +104,7 @@ async def run_pipeline(job_id: str, image_bytes: bytes, mime_type: str, language
         # Step 3 — Search & download videos
         push(job_id, {"type": "step", "step": 3, "message": "🎬 Recherche et téléchargement vidéos..."})
         keywords = " ".join(product.get("keywords", [product["name"]])[:3])
-        urls = build_search_urls(keywords)
-        downloaded = await asyncio.to_thread(downloader.download_videos, urls, video_dir)
+        downloaded = await asyncio.to_thread(downloader.download_videos, [], video_dir, keywords)
         push(job_id, {"type": "step", "step": 3, "message": f"✅ {len(downloaded)} vidéos téléchargées"})
 
         # Step 4 — Voice overs
