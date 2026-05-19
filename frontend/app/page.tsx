@@ -3,7 +3,6 @@ import { useState, useRef, useCallback } from "react";
 import { Upload, Loader2, Download, CheckCircle, AlertCircle, ChevronDown } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const WS_API = API.replace("https://", "wss://").replace("http://", "ws://");
 
 const LANGUAGES = [
   { value: "darija", label: "Darija دارجة" },
@@ -80,21 +79,35 @@ export default function Home() {
     }
     const { job_id } = await res.json();
 
-    const ws = new WebSocket(`${WS_API}/api/ws/${job_id}`);
-    ws.onmessage = (e) => {
-      const msg = JSON.parse(e.data);
-      if (msg.type === "step") {
-        setSteps((prev) => [...prev, msg.message]);
-      } else if (msg.type === "done") {
-        setResult(msg.result);
-        setRunning(false);
-        ws.close();
-      } else if (msg.type === "error") {
-        setError(msg.message);
-        setRunning(false);
-        ws.close();
+    // Poll every 3 seconds instead of WebSocket (avoids Railway timeout)
+    let seenSteps = 0;
+    const poll = async () => {
+      try {
+        const r = await fetch(`${API}/api/status/${job_id}`);
+        if (!r.ok) { setError("Erreur connexion serveur"); setRunning(false); return; }
+        const data = await r.json();
+
+        // Add new steps only
+        if (data.steps && data.steps.length > seenSteps) {
+          const newSteps = data.steps.slice(seenSteps);
+          setSteps((prev) => [...prev, ...newSteps]);
+          seenSteps = data.steps.length;
+        }
+
+        if (data.status === "done") {
+          setResult(data.result);
+          setRunning(false);
+        } else if (data.status === "error") {
+          setError(data.error || "Erreur pipeline");
+          setRunning(false);
+        } else {
+          setTimeout(poll, 3000);
+        }
+      } catch {
+        setTimeout(poll, 5000);
       }
     };
+    poll();
   };
 
   if (!codeVerified) {
