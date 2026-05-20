@@ -22,32 +22,31 @@ def make_reel(video_dir: str, voiceover_path: str, output_path: str) -> str:
         vids_looped = (vids * ((10 // len(vids)) + 1))[:10] if len(vids) < 10 else vids[:10]
         clip_dur = round(DURATION / len(vids_looped), 2)
 
-        vf = (
-            f"scale={REEL_W*2}:{REEL_H*2}:force_original_aspect_ratio=increase,"
-            f"crop={REEL_W*2}:{REEL_H*2},"
-            f"scale={REEL_W}:{REEL_H}:flags=lanczos,setsar=1"
-        )
+        vf = f"scale={REEL_W}:{REEL_H}:force_original_aspect_ratio=decrease,pad={REEL_W}:{REEL_H}:(ow-iw)/2:(oh-ih)/2:black,setsar=1"
         clips = []
         errors = []
         for i, vid in enumerate(vids_looped):
             out = f"{tmp}/clip_{i:02d}.mp4"
             succeeded = False
-            for start in [random.uniform(0.1, 1.0), 0]:
+            for start in [0, random.uniform(0.5, 2.0)]:
                 r = subprocess.run([
-                    FFMPEG, "-y", "-ss", str(start), "-i", vid, "-t", str(clip_dur),
-                    "-vf", vf,
-                    "-c:v", "libx264", "-preset", "fast", "-crf", "23", "-an", "-r", "30", out
+                    FFMPEG, "-y", "-ss", str(start), "-i", vid,
+                    "-t", str(clip_dur), "-vf", vf,
+                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
+                    "-an", "-r", "30", "-pix_fmt", "yuv420p", out
                 ], capture_output=True)
-                if os.path.exists(out) and os.path.getsize(out) > 1000:
+                if os.path.exists(out) and os.path.getsize(out) > 500:
                     clips.append(out)
                     succeeded = True
                     break
+                if os.path.exists(out):
+                    os.remove(out)
             if not succeeded:
-                errors.append(r.stderr.decode(errors="replace")[-300:] if r else "unknown")
+                errors.append(r.stderr.decode(errors="replace")[-200:] if r else "unknown")
 
         if not clips:
-            detail = errors[0] if errors else "no ffmpeg output"
-            raise ValueError(f"No clips processed. FFmpeg error: {detail}")
+            detail = errors[0] if errors else "no output"
+            raise ValueError(f"No clips processed. FFmpeg: {detail}")
 
         concat_file = f"{tmp}/concat.txt"
         with open(concat_file, "w") as f:
