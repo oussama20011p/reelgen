@@ -125,7 +125,7 @@ async def run_pipeline(job_id: str, image_bytes: bytes, mime_type: str, language
             script = scripts_data[v]
             text = f"{script['hook']} {script['body']} {script['cta']}"
             vo_path = os.path.join(job_dir, f"voiceover_{v}.wav")
-            await asyncio.to_thread(voiceover.generate_voiceover, text, vo_path)
+            await asyncio.to_thread(voiceover.generate_voiceover, text, vo_path, language)
             vo_paths[v] = vo_path
             push(job_id, f"✅ Voice over {v} OK")
 
