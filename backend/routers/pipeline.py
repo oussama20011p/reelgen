@@ -75,6 +75,11 @@ async def run_pipeline(job_id: str, image_bytes: bytes, mime_type: str, language
     video_dir = os.path.join(job_dir, "videos")
     os.makedirs(video_dir, exist_ok=True)
 
+    # Save product image to disk
+    product_image_path = os.path.join(job_dir, "product_image.jpg")
+    with open(product_image_path, "wb") as f:
+        f.write(image_bytes)
+
     try:
         jobs[job_id]["status"] = "running"
 
@@ -109,7 +114,7 @@ async def run_pipeline(job_id: str, image_bytes: bytes, mime_type: str, language
         push(job_id, "🎞️ Montage des reels...")
         for v in ["A", "B", "C"]:
             out = os.path.join(job_dir, f"reel_v{v}.mp4")
-            await asyncio.to_thread(editor.make_reel, video_dir, vo_paths[v], out)
+            await asyncio.to_thread(editor.make_reel, video_dir, vo_paths[v], out, product_image_path)
             size_mb = round(os.path.getsize(out) / (1024 * 1024), 1)
             push(job_id, f"✅ Reel {v} — {size_mb} MB")
 
