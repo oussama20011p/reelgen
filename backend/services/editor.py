@@ -19,8 +19,9 @@ def make_reel(video_dir: str, voiceover_path: str, output_path: str) -> str:
     try:
         vids = all_vids.copy()
         random.shuffle(vids)
-        vids_looped = (vids * ((10 // len(vids)) + 1))[:10] if len(vids) < 10 else vids[:10]
-        clip_dur = round(DURATION / len(vids_looped), 2)
+        nb_clips = 5
+        vids_looped = (vids * ((nb_clips // len(vids)) + 1))[:nb_clips] if len(vids) < nb_clips else vids[:nb_clips]
+        clip_dur = round(DURATION / nb_clips, 2)
 
         vf = f"scale={REEL_W}:{REEL_H}:force_original_aspect_ratio=decrease,pad={REEL_W}:{REEL_H}:(ow-iw)/2:(oh-ih)/2:black,setsar=1"
         clips = []
@@ -30,10 +31,11 @@ def make_reel(video_dir: str, voiceover_path: str, output_path: str) -> str:
             succeeded = False
             for start in [0, random.uniform(0.5, 2.0)]:
                 r = subprocess.run([
-                    FFMPEG, "-y", "-ss", str(start), "-i", vid,
+                    FFMPEG, "-y", "-loglevel", "error",
+                    "-ss", str(start), "-i", vid,
                     "-t", str(clip_dur), "-vf", vf,
                     "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
-                    "-an", "-r", "30", "-pix_fmt", "yuv420p", out
+                    "-threads", "1", "-an", "-r", "30", "-pix_fmt", "yuv420p", out
                 ], capture_output=True)
                 if os.path.exists(out) and os.path.getsize(out) > 500:
                     clips.append(out)
