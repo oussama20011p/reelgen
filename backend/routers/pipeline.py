@@ -102,7 +102,7 @@ async def run_pipeline(job_id: str, image_bytes: bytes, mime_type: str, language
 
         # Step 3 — Download videos
         push(job_id, "🎬 Recherche vidéos via RapidAPI...")
-        keywords = " ".join(product.get("keywords", [product["name"]])[:3])
+        keywords = f"{product['name']} review unboxing"
         downloaded = await asyncio.to_thread(downloader.download_videos, [], video_dir, keywords)
         push(job_id, f"✅ {len(downloaded)} vidéos téléchargées")
 
