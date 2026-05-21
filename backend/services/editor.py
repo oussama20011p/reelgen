@@ -42,15 +42,8 @@ def make_reel(video_dir: str, voiceover_path: str, output_path: str, product_ima
         clip_dur = round(DURATION / NB_CLIPS, 2)
         clips = []
 
-        # Use product image with animations
-        if product_image and os.path.exists(product_image):
-            for i in range(NB_CLIPS):
-                out = f"{tmp}/clip_{i:02d}.mp4"
-                if _image_clip(product_image, out, i, clip_dur):
-                    clips.append(out)
-
-        # Fallback to TikTok videos if image clips failed
-        if not clips:
+        # Primary: TikTok videos
+        if True:
             all_vids = glob.glob(f"{video_dir}/*.mp4")
             if not all_vids:
                 raise ValueError("No videos found in directory")
@@ -81,6 +74,13 @@ def make_reel(video_dir: str, voiceover_path: str, output_path: str, product_ima
                         os.remove(out)
                 if not succeeded:
                     errors.append(r.stderr.decode(errors="replace")[-200:] if r else "unknown")
+            # Fallback: product image animation
+            if not clips and product_image and os.path.exists(product_image):
+                for i in range(NB_CLIPS):
+                    out = f"{tmp}/clip_{i:02d}.mp4"
+                    if _image_clip(product_image, out, i, clip_dur):
+                        clips.append(out)
+
             if not clips:
                 detail = errors[0] if errors else "no output"
                 raise ValueError(f"No clips processed. FFmpeg: {detail}")
