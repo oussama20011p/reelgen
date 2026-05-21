@@ -59,17 +59,14 @@ def make_reel(video_dir: str, voiceover_path: str, output_path: str) -> str:
             capture_output=True, check=True
         )
 
-        audio_filter = f"[1:a]volume=2.0,adelay=1000|1000,afade=t=out:st={DURATION-2}:d=2[aout]"
         subprocess.run([
             FFMPEG, "-y",
             "-i", merged, "-i", voiceover_path,
             "-t", str(DURATION),
-            "-map", "0:v:0",
-            "-filter_complex", audio_filter,
-            "-map", "[aout]",
-            "-vf", f"fade=t=in:st=0:d=0.3,fade=t=out:st={DURATION-1}:d=1",
-            "-c:v", "libx264", "-preset", "fast", "-crf", "20",
-            "-c:a", "aac", "-b:a", "192k", "-shortest", output_path
+            "-map", "0:v:0", "-map", "1:a:0",
+            "-c:v", "copy",
+            "-c:a", "aac", "-b:a", "128k",
+            "-shortest", output_path
         ], check=True, capture_output=True)
 
     finally:
