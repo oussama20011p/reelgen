@@ -20,6 +20,7 @@ async def start_pipeline(
     image: UploadFile = File(...),
     language: str = Form(...),
     invite_code: str = Form(...),
+    manual_script: str = Form(""),
 ):
     valid_codes = os.getenv("INVITE_CODES", "oussama2025,sadaka,reelgen").split(",")
     valid_codes = [c.strip() for c in valid_codes if c.strip()]
@@ -38,7 +39,7 @@ async def start_pipeline(
         "last_seen": time.time()
     }
 
-    asyncio.create_task(run_pipeline(job_id, image_bytes, mime_type, language))
+    asyncio.create_task(run_pipeline(job_id, image_bytes, mime_type, language, manual_script))
     return {"job_id": job_id}
 
 
@@ -70,7 +71,7 @@ def push(job_id: str, message: str):
         jobs[job_id]["steps"].append(message)
 
 
-async def run_pipeline(job_id: str, image_bytes: bytes, mime_type: str, language: str):
+async def run_pipeline(job_id: str, image_bytes: bytes, mime_type: str, language: str, manual_script: str = ""):
     job_dir = os.path.join(TEMP_BASE, job_id)
     video_dir = os.path.join(job_dir, "videos")
     os.makedirs(video_dir, exist_ok=True)
@@ -89,9 +90,15 @@ async def run_pipeline(job_id: str, image_bytes: bytes, mime_type: str, language
         push(job_id, f"✅ Produit: {product['name']}")
 
         # Step 2 — Generate scripts
-        push(job_id, "✍️ Génération des scripts...")
-        scripts_data = await asyncio.to_thread(scripts.generate_scripts, product, language)
-        push(job_id, "✅ 3 scripts générés (A/B/C)")
+        if manual_script.strip():
+            push(job_id, "✍️ Script manuel utilisé...")
+            s = {"hook": manual_script.strip(), "body": "", "cta": "", "angle": "Manuel"}
+            scripts_data = {"A": s, "B": s, "C": s}
+            push(job_id, "✅ Script manuel appliqué aux 3 reels")
+        else:
+            push(job_id, "✍️ Génération des scripts...")
+            scripts_data = await asyncio.to_thread(scripts.generate_scripts, product, language)
+            push(job_id, "✅ 3 scripts générés (A/B/C)")
 
         # Step 3 — Download videos
         push(job_id, "🎬 Recherche vidéos via RapidAPI...")

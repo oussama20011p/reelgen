@@ -25,6 +25,8 @@ export default function Home() {
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [language, setLanguage] = useState("darija");
+  const [scriptMode, setScriptMode] = useState<"ai" | "manual">("ai");
+  const [manualScript, setManualScript] = useState("");
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<string[]>([]);
   const [result, setResult] = useState<Result | null>(null);
@@ -33,13 +35,17 @@ export default function Home() {
 
   const verifyCode = async () => {
     setCodeError("");
-    const res = await fetch(`${API}/api/verify-code`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: inviteCode }),
-    });
-    if (res.ok) setCodeVerified(true);
-    else setCodeError("Code invalide ❌");
+    try {
+      const res = await fetch(`${API}/api/verify-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: inviteCode }),
+      });
+      if (res.ok) setCodeVerified(true);
+      else setCodeError("Code invalide ❌");
+    } catch {
+      setCodeError("Erreur connexion serveur ❌");
+    }
   };
 
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -61,6 +67,7 @@ export default function Home() {
 
   const startPipeline = async () => {
     if (!image || !codeVerified) return;
+    if (scriptMode === "manual" && !manualScript.trim()) return;
     setRunning(true);
     setSteps([]);
     setResult(null);
@@ -70,6 +77,9 @@ export default function Home() {
     form.append("image", image);
     form.append("language", language);
     form.append("invite_code", inviteCode);
+    if (scriptMode === "manual") {
+      form.append("manual_script", manualScript.trim());
+    }
 
     const res = await fetch(`${API}/api/start`, { method: "POST", body: form });
     if (!res.ok) {
@@ -79,21 +89,16 @@ export default function Home() {
     }
     const { job_id } = await res.json();
 
-    // Poll every 3 seconds instead of WebSocket (avoids Railway timeout)
     let seenSteps = 0;
     const poll = async () => {
       try {
         const r = await fetch(`${API}/api/status/${job_id}`);
         if (!r.ok) { setError("Erreur connexion serveur"); setRunning(false); return; }
         const data = await r.json();
-
-        // Add new steps only
         if (data.steps && data.steps.length > seenSteps) {
-          const newSteps = data.steps.slice(seenSteps);
-          setSteps((prev) => [...prev, ...newSteps]);
+          setSteps((prev) => [...prev, ...data.steps.slice(seenSteps)]);
           seenSteps = data.steps.length;
         }
-
         if (data.status === "done") {
           setResult(data.result);
           setRunning(false);
@@ -178,10 +183,50 @@ export default function Home() {
           <ChevronDown className="absolute right-4 top-3.5 text-zinc-400 pointer-events-none" size={16} />
         </div>
 
+        {/* Script Mode Toggle */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-4">
+          <div className="flex gap-2 mb-3">
+            <button
+              onClick={() => setScriptMode("ai")}
+              className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${
+                scriptMode === "ai"
+                  ? "bg-violet-600 text-white"
+                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+              }`}
+            >
+              🤖 Script IA
+            </button>
+            <button
+              onClick={() => setScriptMode("manual")}
+              className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${
+                scriptMode === "manual"
+                  ? "bg-violet-600 text-white"
+                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+              }`}
+            >
+              ✍️ Script Manuel
+            </button>
+          </div>
+
+          {scriptMode === "ai" && (
+            <p className="text-zinc-500 text-xs">L&apos;IA génère 3 scripts A/B/C automatiquement depuis la photo.</p>
+          )}
+
+          {scriptMode === "manual" && (
+            <textarea
+              value={manualScript}
+              onChange={(e) => setManualScript(e.target.value)}
+              placeholder="Écris ton script ici... (utilisé pour les 3 reels)"
+              rows={5}
+              className="w-full bg-zinc-800 text-white rounded-xl px-4 py-3 text-sm outline-none border border-zinc-700 focus:border-violet-500 transition resize-none"
+            />
+          )}
+        </div>
+
         {/* Launch button */}
         <button
           onClick={startPipeline}
-          disabled={!image || running}
+          disabled={!image || running || (scriptMode === "manual" && !manualScript.trim())}
           className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-xl transition flex items-center justify-center gap-2 text-base mb-6"
         >
           {running ? (
