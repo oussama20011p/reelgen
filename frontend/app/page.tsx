@@ -27,11 +27,14 @@ export default function Home() {
   const [language, setLanguage] = useState("darija");
   const [scriptMode, setScriptMode] = useState<"ai" | "manual">("ai");
   const [manualScript, setManualScript] = useState("");
+  const [videoSource, setVideoSource] = useState<"auto" | "upload">("auto");
+  const [footages, setFootages] = useState<File[]>([]);
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<string[]>([]);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const footageRef = useRef<HTMLInputElement>(null);
 
   const verifyCode = async () => {
     setCodeError("");
@@ -68,6 +71,7 @@ export default function Home() {
   const startPipeline = async () => {
     if (!image || !codeVerified) return;
     if (scriptMode === "manual" && !manualScript.trim()) return;
+    if (videoSource === "upload" && footages.length === 0) return;
     setRunning(true);
     setSteps([]);
     setResult(null);
@@ -77,8 +81,12 @@ export default function Home() {
     form.append("image", image);
     form.append("language", language);
     form.append("invite_code", inviteCode);
+    form.append("video_source", videoSource);
     if (scriptMode === "manual") {
       form.append("manual_script", manualScript.trim());
+    }
+    if (videoSource === "upload") {
+      footages.forEach((f) => form.append("footages", f));
     }
 
     const res = await fetch(`${API}/api/start`, { method: "POST", body: form });
@@ -181,6 +189,50 @@ export default function Home() {
             ))}
           </select>
           <ChevronDown className="absolute right-4 top-3.5 text-zinc-400 pointer-events-none" size={16} />
+        </div>
+
+        {/* Video Source Toggle */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-4">
+          <p className="text-zinc-400 text-xs mb-3 font-medium uppercase tracking-wider">Source vidéo</p>
+          <div className="flex gap-2 mb-3">
+            <button
+              onClick={() => setVideoSource("auto")}
+              className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${
+                videoSource === "auto" ? "bg-violet-600 text-white" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+              }`}
+            >
+              🔍 Recherche auto
+            </button>
+            <button
+              onClick={() => setVideoSource("upload")}
+              className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${
+                videoSource === "upload" ? "bg-violet-600 text-white" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+              }`}
+            >
+              📁 Mes vidéos
+            </button>
+          </div>
+          {videoSource === "auto" && (
+            <p className="text-zinc-500 text-xs">Recherche automatique sur TikTok pour ce type de produit.</p>
+          )}
+          {videoSource === "upload" && (
+            <div>
+              <input
+                ref={footageRef}
+                type="file"
+                accept="video/mp4,video/*"
+                multiple
+                className="hidden"
+                onChange={(e) => setFootages(Array.from(e.target.files || []))}
+              />
+              <button
+                onClick={() => footageRef.current?.click()}
+                className="w-full border border-dashed border-zinc-600 hover:border-violet-500 rounded-xl py-3 text-zinc-400 text-sm transition"
+              >
+                {footages.length > 0 ? `✅ ${footages.length} vidéo(s) sélectionnée(s)` : "Clique pour choisir tes vidéos (.mp4)"}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Script Mode Toggle */}

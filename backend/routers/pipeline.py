@@ -1,4 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from typing import List
 from fastapi.responses import FileResponse
 import asyncio
 import os
@@ -21,6 +22,8 @@ async def start_pipeline(
     language: str = Form(...),
     invite_code: str = Form(...),
     manual_script: str = Form(""),
+    video_source: str = Form("auto"),
+    footages: List[UploadFile] = File([]),
 ):
     valid_codes = os.getenv("INVITE_CODES", "oussama2025,sadaka,reelgen").split(",")
     valid_codes = [c.strip() for c in valid_codes if c.strip()]
@@ -39,7 +42,8 @@ async def start_pipeline(
         "last_seen": time.time()
     }
 
-    asyncio.create_task(run_pipeline(job_id, image_bytes, mime_type, language, manual_script))
+    footage_bytes = [(await f.read(), f.filename) for f in footages]
+    asyncio.create_task(run_pipeline(job_id, image_bytes, mime_type, language, manual_script, video_source, footage_bytes))
     return {"job_id": job_id}
 
 
@@ -71,7 +75,7 @@ def push(job_id: str, message: str):
         jobs[job_id]["steps"].append(message)
 
 
-async def run_pipeline(job_id: str, image_bytes: bytes, mime_type: str, language: str, manual_script: str = ""):
+async def run_pipeline(job_id: str, image_bytes: bytes, mime_type: str, language: str, manual_script: str = "", video_source: str = "auto", footage_bytes: list = []):
     job_dir = os.path.join(TEMP_BASE, job_id)
     video_dir = os.path.join(job_dir, "videos")
     os.makedirs(video_dir, exist_ok=True)
@@ -100,11 +104,19 @@ async def run_pipeline(job_id: str, image_bytes: bytes, mime_type: str, language
             scripts_data = await asyncio.to_thread(scripts.generate_scripts, product, language)
             push(job_id, "✅ 3 scripts générés (A/B/C)")
 
-        # Step 3 — Download videos
-        push(job_id, "🎬 Recherche vidéos via RapidAPI...")
-        keywords = product.get("tiktok_search") or product.get("niche") or product["name"]
-        downloaded = await asyncio.to_thread(downloader.download_videos, [], video_dir, keywords)
-        push(job_id, f"✅ {len(downloaded)} vidéos téléchargées")
+        # Step 3 — Download / save videos
+        if video_source == "upload" and footage_bytes:
+            push(job_id, "📁 Sauvegarde des vidéos uploadées...")
+            for data, fname in footage_bytes:
+                safe = "".join(c for c in (fname or "video.mp4") if c.isalnum() or c in "._-")
+                with open(os.path.join(video_dir, safe), "wb") as f:
+                    f.write(data)
+            push(job_id, f"✅ {len(footage_bytes)} vidéos uploadées")
+        else:
+            push(job_id, "🎬 Recherche vidéos via RapidAPI...")
+            keywords = product.get("tiktok_search") or product.get("niche") or product["name"]
+            downloaded = await asyncio.to_thread(downloader.download_videos, [], video_dir, keywords)
+            push(job_id, f"✅ {len(downloaded)} vidéos téléchargées")
 
         # Step 4 — Voice overs
         push(job_id, "🎙️ Génération voice overs...")
