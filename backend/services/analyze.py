@@ -24,6 +24,7 @@ def analyze_product_image(image_bytes: bytes, mime_type: str) -> dict:
                         "- niche: product category\n"
                         "- keywords: list of 5 specific search keywords\n"
                         "- description: 1 sentence visual description\n"
+                        "- tiktok_search: short 2-4 word TikTok search query for this product type (e.g. 'portable blender', 'wireless earbuds', 'led face mask'). Generic enough to find many videos, specific enough to match this product type.\n"
                         "No markdown, pure JSON."
                     )
                 }
