@@ -144,6 +144,15 @@ boundary — never alternate on a fixed clock.
   loops, or timer-driven render-critical animation. No render-time network.
 - Never animate `display`, `visibility`, or `autoAlpha` on a `.clip` — animate a
   child wrapper.
+- Never put `dir="rtl"` on `<html>` — it renders a blank video. Scope direction
+  to text elements (see `references/style-system.md`).
+- Declare every font family with `@font-face` (`src: local('…')` for installed
+  system fonts), or the renderer silently substitutes a fallback.
+- Load GSAP and any other library from a local vendored copy, never a CDN — a
+  CDN `<script>` is a render-time network request and will fail closed.
+- Position each `.clip` as its own layer with an explicit zone and put content
+  in an inner wrapper; sibling clips that share a flow box trip the layout
+  inspector's `content_overlap` check.
 - IDs unique across the assembled document.
 - Social safe zones: essential text within ~x=80–1000 and y=140–1650, CTA
   comfortably above the bottom platform controls.

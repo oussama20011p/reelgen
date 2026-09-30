@@ -59,12 +59,37 @@ delivery report.
 
 ## Arabic RTL shaping
 
-- `dir="rtl"`.
+**Never put `dir="rtl"` on `<html>`.** `hyperframes lint` flags this as
+`html_dir_attribute_breaks_render`: it looks correct in preview and snapshots
+but renders a fully blank/black video — a silent failure. Keep `lang="ar"` on
+`<html>` and scope `direction: rtl` (or `dir="rtl"`) to the individual
+text-containing elements. Arabic still shapes correctly through the browser's
+own bidi algorithm.
+
+- `direction: rtl` on text elements only, never on `<html>`.
 - Whole-word spans.
 - Correct Unicode shaping and punctuation.
 - Natural Arabic line breaks.
 - No individual-letter splitting or animation.
 - Animate complete shaped words or lines only.
+
+## Declaring the fonts to the renderer
+
+An installed system font is not enough. `hyperframes lint` raises
+`font_family_without_font_face` for any family used without an `@font-face`
+declaration, and the renderer silently falls back to a generic font. For an
+OS-installed family with no downloadable file, declare it with `src: local(...)`
+— the declaration alone satisfies the check:
+
+```css
+@font-face { font-family: 'Cairo';            src: local('Cairo'); }
+@font-face { font-family: 'Tajawal';          src: local('Tajawal'); }
+@font-face { font-family: 'Noto Kufi Arabic'; src: local('Noto Kufi Arabic'); }
+@font-face { font-family: 'Noto Sans Arabic'; src: local('Noto Sans Arabic'); }
+```
+
+Declare only families you verified are actually installed, in the same order as
+the CSS fallback stack.
 
 ## Captions
 
